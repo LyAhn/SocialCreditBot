@@ -1,8 +1,8 @@
 import sqlite3
 import discord
-
-
 from textblob import TextBlob
+
+version = "0.2"
 
 ############################Test stuff#################################
 with open('token.txt') as f:
