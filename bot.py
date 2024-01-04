@@ -1,8 +1,10 @@
 import sqlite3
 import discord
 from operator import itemgetter
-from textblob import TextBlob
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+#from textblob import TextBlob
 
+analyzer = SentimentIntensityAnalyzer()
 version = "0.3"
 
 
@@ -42,25 +44,45 @@ async def on_message(message):
     if message.content.startswith('?board'):
         await display_leaderboard(message)
         
-    
+    # min_words = 5
+        
+    # def check_min_length(message):
+    #     if len(message.content.split()) < min_words:
+    #             return False
+    #     else:
+    #             return True
+    # if not check_min_length(message):
+    #     return     
         
     if any(keyword in message.content.lower() for keyword in keywords):
-        blob = TextBlob(message.content)
-        sentiment = blob.sentiment.polarity
+        # blob = TextBlob(message.content)
+        # sentiment = blob.sentiment.polarity
         
-        score = 0
+        score = analyzer.polarity_scores(message.content)
+        sentiment = int(score['compound'] * 100)
+        scaled_score = sentiment * 8
+        if -0.1 < sentiment < 0.1:
+            scaled_score = 0
         
-        if sentiment > 0.5:
+        if scaled_score > 7:
+            score = 75
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
+        
+        elif scaled_score > 4:
             score = 25
             await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
-        elif sentiment > 0:
-            score = 10
+        elif scaled_score > 0.5:
+            score = 2
             await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
-        elif sentiment < -0.5:
+        elif scaled_score < -6:
+            score = -75
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
+        elif scaled_score < -4:
             score = -25
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
-        elif sentiment < 0:
-            score = -10
+        
+        elif scaled_score < 0:
+            score = -5
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
 
 
@@ -81,7 +103,7 @@ async def on_message(message):
         #     c.execute('UPDATE scores SET score = ? WHERE user_id = ?', (result[0] + score, message.author.id))
         # conn.commit()
         # conn.close()
-        
+     
         
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
@@ -92,7 +114,7 @@ async def on_message(message):
             c.execute('INSERT INTO scores (server_id, user_id, score) VALUES (?, ?, ?)', (server_id, message.author.id, score))
             result = (score,)
         else:
-            c.execute('UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?', (result[0] + score, server_id, message.author.id))
+            c.execute('UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?', (result[0] + sentiment, server_id, message.author.id))
         conn.commit()
         conn.close()
 ######################################################################
