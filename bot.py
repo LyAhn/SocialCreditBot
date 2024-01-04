@@ -28,7 +28,7 @@ client = discord.Client(intents=discord.Intents.all())
 @client.event
 async def on_ready():
     print('Logged in as {0.user}'.format(client))
-    watching = discord.Activity(type=discord.ActivityType.watching, name="you! :flag_cn:")
+    watching = discord.Activity(type=discord.ActivityType.watching, name="you! 🇨🇳")
     await client.change_presence(activity=watching)
     
 @client.event
