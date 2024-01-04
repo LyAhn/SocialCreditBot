@@ -31,19 +31,7 @@ Commands
 Database
 --------
 
-The 
-
-```
-scores.db
-```
-
- SQLite database contains a 
-
-```
-scores
-```
-
- table with:
+The `scores.db` SQLite database contains a `scores` table with:
 
 -   `user_id` as PRIMARY KEY
 -   `score` integer column
