@@ -3,6 +3,7 @@ token.txt
 keywords.txt
 scores.db
 roles.txt
+*.old
 
 
 

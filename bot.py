@@ -3,9 +3,8 @@ import discord
 from operator import itemgetter
 from textblob import TextBlob
 
-version = "0.2"
+version = "0.3"
 
-############################Test stuff#################################
 
 with open('roles.txt') as f:
     role_name = f.read().strip()
@@ -18,10 +17,6 @@ with open('keywords.txt') as f:
     keywords = f.readlines()
     keywords = [x.strip() for x in keywords]
 
-
-
-######################################################################
-
 client = discord.Client(intents=discord.Intents.all())
 
 @client.event
@@ -32,6 +27,7 @@ async def on_ready():
     
 @client.event
 async def on_message(message):
+    server_id = message.guild.id
     
     if message.author == client.user:
         return
@@ -67,18 +63,44 @@ async def on_message(message):
             score = -10
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
 
+
+
+
+
+
+############################Test stuff#################################
+        # conn = sqlite3.connect('scores.db')
+        # c = conn.cursor()
+        # c.execute('CREATE TABLE IF NOT EXISTS scores (user_id INTEGER PRIMARY KEY, score INTEGER)')
+        # c.execute('SELECT score FROM scores WHERE user_id = ?', (message.author.id,))
+        # result = c.fetchone()
+        # if result is None:
+        #     c.execute('INSERT INTO scores (user_id, score) VALUES (?, ?)', (message.author.id, score))
+        #     result = (score,)
+        # else:
+        #     c.execute('UPDATE scores SET score = ? WHERE user_id = ?', (result[0] + score, message.author.id))
+        # conn.commit()
+        # conn.close()
+        
+        
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS scores (user_id INTEGER PRIMARY KEY, score INTEGER)')
-        c.execute('SELECT score FROM scores WHERE user_id = ?', (message.author.id,))
+        c.execute('CREATE TABLE IF NOT EXISTS scores (server_id INTEGER, user_id INTEGER, score INTEGER, PRIMARY KEY(server_id, user_id))')
+        c.execute('SELECT score FROM scores WHERE server_id = ? AND user_id = ?', (server_id, message.author.id,))
         result = c.fetchone()
         if result is None:
-            c.execute('INSERT INTO scores (user_id, score) VALUES (?, ?)', (message.author.id, score))
+            c.execute('INSERT INTO scores (server_id, user_id, score) VALUES (?, ?, ?)', (server_id, message.author.id, score))
             result = (score,)
         else:
-            c.execute('UPDATE scores SET score = ? WHERE user_id = ?', (result[0] + score, message.author.id))
+            c.execute('UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?', (result[0] + score, server_id, message.author.id))
         conn.commit()
         conn.close()
+######################################################################
+
+
+
+
+
 
     if message.content.startswith('?give'):
         
@@ -91,7 +113,7 @@ async def on_message(message):
         amount = int(message.content.split()[-1])
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute("UPDATE scores SET score = score + ? WHERE user_id = ?", (amount, user.id))
+        c.execute("UPDATE scores SET score = score + ? WHERE server_id = ? AND user_id = ?", (amount, server_id, user.id,))
         conn.commit()
         conn.close()
 
@@ -104,7 +126,7 @@ async def on_message(message):
         amount = int(message.content.split()[-1])
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute("UPDATE scores SET score = score - ? WHERE user_id = ?",(amount, user.id))
+        c.execute("UPDATE scores SET score = score - ? WHERE server_id = ? AND user_id = ?", (amount, server_id, user.id))
         conn.commit()
         conn.close()
         await message.channel.send(f"The CCP has deducted {user.mention} {amount} Social Credit Score!")
@@ -115,7 +137,7 @@ async def on_message(message):
         user = message.mentions[0]
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute("UPDATE scores SET score = 0 WHERE user_id = ?",(user.id,))
+        c.execute("UPDATE scores SET score = 0 WHERE server_id = ? AND user_id = ?",(server_id, user.id))
         conn.commit()
         conn.close()
         await message.channel.send(f"The CCP has reset {user.mention} Social Credit Score!")
@@ -128,8 +150,7 @@ async def on_message(message):
         amount = int(message.content.split()[-1])
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute("UPDATE scores SET score = ? WHERE user_id = ?",
-                  (amount, user.id))
+        c.execute("UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?", (amount, server_id, user.id))
         await message.channel.send(f"The CCP has set {user.mention} Social Credit Score to {amount}!")
         conn.commit()
         conn.close()
@@ -140,8 +161,8 @@ async def on_message(message):
             user = message.mentions[0]
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS scores (user_id INTEGER PRIMARY KEY, score INTEGER)')
-        c.execute('SELECT score FROM scores WHERE user_id = ?', (user.id,))
+        c.execute('CREATE TABLE IF NOT EXISTS scores (server_id INTEGER, user_id INTEGER, score INTEGER, PRIMARY KEY(server_id, user_id))')
+        c.execute('SELECT score FROM scores WHERE server_id = ? AND user_id = ?', (server_id, user.id,))
         result = c.fetchone()
         if result is None:
             await message.channel.send(f':flag_cn: {user.mention} has not received a social credit score yet. :flag_cn:')
@@ -172,9 +193,12 @@ async def display_leaderboard(message):
   # Connect to database
   conn = sqlite3.connect('scores.db')  
   c = conn.cursor()
+  
+  # Get current server id
+  server_id = message.guild.id
 
   # Query all scores
-  c.execute("SELECT user_id, score FROM scores ORDER BY score DESC")
+  c.execute("SELECT user_id, score FROM scores WHERE server_id = ? ORDER BY score DESC", (server_id,))
 
   # Fetch results 
   results = c.fetchall()
@@ -183,11 +207,11 @@ async def display_leaderboard(message):
   embed = discord.Embed(title="Social Credit Leaderboard")
 
   # Add fields for each result
-  for pos, result in enumerate(results):
+  for pos, result in enumerate(results[:10]):
     user_id = result[0]
     score = result[1]
     user = client.get_user(user_id)
-    color = 0xFF0000 if pos <3 else 0x00FF00
+    color = 0xFF0000 #if pos <3 else 0x00FF00
     emoji = "🥇" if pos==0 else "🥈" if pos==1 else "🥉" if pos==2 else ""
     embed.add_field(name=f"#{pos+1} {emoji}", value=f"{user} : {score:>10}")
     embed.color = color
