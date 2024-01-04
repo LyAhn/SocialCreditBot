@@ -33,14 +33,21 @@ async def on_ready():
 @client.event
 async def on_message(message):
     
-    # Leaderboard command
-    if message.content.startswith('?board'):
-        await display_leaderboard(message)
-    
-    
     if message.author == client.user:
         return
 
+    if message.content.startswith('?version'):
+        await message.channel.send(f'Version: {version}')
+        
+    if message.content.startswith('?ping'):
+        await display_ping(message)         
+        
+    # Leaderboard command
+    if message.content.startswith('?board'):
+        await display_leaderboard(message)
+        
+    
+        
     if any(keyword in message.content.lower() for keyword in keywords):
         blob = TextBlob(message.content)
         sentiment = blob.sentiment.polarity
@@ -146,13 +153,19 @@ async def on_message(message):
         embed.add_field(name='?score', value='Displays the social credit score of the user who sent the command. You can also mention another user to see their social credit score.', inline=False)
         embed.add_field(name='?help', value='Displays this help message.', inline=False)
         embed.add_field(name='?board', value='Displays the leaderboard of the users with the highest social credit scores.', inline=False)
-        embed.add_field(name='?give', value='Gives a user a specified amount of social credit score. You must be an owner or a member of the CCP to use this command.', inline=False)
-        embed.add_field(name='?take', value='Takes a user a specified amount of social credit score. You must be an owner or a member of the CCP to use this command.', inline=False)
-        embed.add_field(name='?reset', value='Resets the social credit score of a user. You must be an owner or a member of the CCP to use this command.', inline=False)
-        embed.add_field(name='?set', value='Sets the social credit score of a user to a specified amount. You must be an owner or a member of the CCP to use this command.', inline=False)
+        embed.add_field(name='?give', value='Gives a mentioned user a specified amount of social credit score. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?take', value='Takes a mentioned user a specified amount of social credit score. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?reset', value='Resets the social credit score of a mentioned user. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?set', value='Sets the social credit score of a mentioned user to a specified amount. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?ping', value='Displays the latency of the bot.', inline=False)
         embed.add_field(name='Version', value=(version), inline=True)
         await message.channel.send(embed=embed)
-        
+
+## PING COMMAND ##
+async def display_ping(message):
+            await message.channel.send(f'Pong! {round(client.latency * 1000)}ms')
+
+## LEADERBOARD CODE ##        
     # Define leaderboard function
 async def display_leaderboard(message):
 
@@ -184,6 +197,8 @@ async def display_leaderboard(message):
 
 # Close connection
   conn.close()
+  
+  ## END OF LEADERBOARD CODE ##
 
 
 client.run(token)
