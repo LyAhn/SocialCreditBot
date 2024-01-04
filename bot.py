@@ -6,10 +6,9 @@ from textblob import TextBlob
 version = "0.2"
 
 ############################Test stuff#################################
-#with open('owners.txt') as f:
-#    lines = f.readlines()
-owner_id = "2528954110969118730"
-role_name = "Janitor"
+
+with open('roles.txt') as f:
+    role_name = f.read().strip()
 
 with open('token.txt') as f:
     token = f.read()
