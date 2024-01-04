@@ -189,23 +189,17 @@ async def display_ping(message):
 ## LEADERBOARD CODE ##        
     # Define leaderboard function
 async def display_leaderboard(message):
-
   # Connect to database
   conn = sqlite3.connect('scores.db')  
   c = conn.cursor()
-  
-  # Get current server id
+    # Get current server id
   server_id = message.guild.id
-
   # Query all scores
   c.execute("SELECT user_id, score FROM scores WHERE server_id = ? ORDER BY score DESC", (server_id,))
-
   # Fetch results 
   results = c.fetchall()
-
   # Create embed message
   embed = discord.Embed(title="Social Credit Leaderboard")
-
   # Add fields for each result
   for pos, result in enumerate(results[:10]):
     user_id = result[0]
