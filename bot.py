@@ -1,10 +1,15 @@
 import sqlite3
 import discord
-
-
+from operator import itemgetter
 from textblob import TextBlob
 
+version = "0.2"
+
 ############################Test stuff#################################
+
+with open('roles.txt') as f:
+    role_name = f.read().strip()
+
 with open('token.txt') as f:
     token = f.read()
 
@@ -27,9 +32,22 @@ async def on_ready():
     
 @client.event
 async def on_message(message):
+    
     if message.author == client.user:
         return
 
+    if message.content.startswith('?version'):
+        await message.channel.send(f'Version: {version}')
+        
+    if message.content.startswith('?ping'):
+        await display_ping(message)         
+        
+    # Leaderboard command
+    if message.content.startswith('?board'):
+        await display_leaderboard(message)
+        
+    
+        
     if any(keyword in message.content.lower() for keyword in keywords):
         blob = TextBlob(message.content)
         sentiment = blob.sentiment.polarity
@@ -38,16 +56,16 @@ async def on_message(message):
         
         if sentiment > 0.5:
             score = 25
-            await message.channel.send(f'Positive social credit score for {message.author.mention}! You have been given {score}. :red_envelope: :flag_cn:')
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
         elif sentiment > 0:
             score = 10
-            await message.channel.send(f'Positive social credit score for {message.author.mention}! You have been given {score}.')
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
         elif sentiment < -0.5:
             score = -25
-            await message.channel.send(f'Negative social credit score for {message.author.mention}! You have been deducted {score} points! ')
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
         elif sentiment < 0:
             score = -10
-            await message.channel.send(f'Negative social credit score for {message.author.mention}! You have been deducted {score} points! ')
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
 
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
@@ -62,7 +80,61 @@ async def on_message(message):
         conn.commit()
         conn.close()
 
-    if message.content.startswith('?score'):
+    if message.content.startswith('?give'):
+        
+        # Check author permissions
+        if role_name not in [role.name for role in message.author.roles]:
+            return await message.channel.send(':raised_hand::octagonal_sign: This is a CCP command! :flag_cn: :raised_hand::octagonal_sign: ')
+        else:
+        # Check if user is mentioned
+            user = message.mentions[0]
+        amount = int(message.content.split()[-1])
+        conn = sqlite3.connect('scores.db')
+        c = conn.cursor()
+        c.execute("UPDATE scores SET score = score + ? WHERE user_id = ?", (amount, user.id))
+        conn.commit()
+        conn.close()
+
+        await message.channel.send(f"The CCP has awarded {user.mention} {amount} Social Credit Score!")
+        
+    if message.content.startswith('?take'):
+        if role_name not in [role.name for role in message.author.roles]:
+            return await message.channel.send(':raised_hand::octagonal_sign: This is a CCP command! :flag_cn: :raised_hand::octagonal_sign: ')
+        user = message.mentions[0]
+        amount = int(message.content.split()[-1])
+        conn = sqlite3.connect('scores.db')
+        c = conn.cursor()
+        c.execute("UPDATE scores SET score = score - ? WHERE user_id = ?",(amount, user.id))
+        conn.commit()
+        conn.close()
+        await message.channel.send(f"The CCP has deducted {user.mention} {amount} Social Credit Score!")
+        
+    if message.content.startswith('?reset'):
+        if role_name not in [role.name for role in message.author.roles]:
+            return await message.channel.send(':raised_hand::octagonal_sign: This is a CCP command! :flag_cn: :raised_hand::octagonal_sign: ')
+        user = message.mentions[0]
+        conn = sqlite3.connect('scores.db')
+        c = conn.cursor()
+        c.execute("UPDATE scores SET score = 0 WHERE user_id = ?",(user.id,))
+        conn.commit()
+        conn.close()
+        await message.channel.send(f"The CCP has reset {user.mention} Social Credit Score!")
+        
+    if message.content.startswith('?set'):
+        if role_name not in [role.name for role in message.author.roles]:
+            return await message.channel.send(':raised_hand::octagonal_sign: This is a CCP command! :flag_cn: :raised_hand::octagonal_sign: ')
+        else:
+            user = message.mentions[0]
+        amount = int(message.content.split()[-1])
+        conn = sqlite3.connect('scores.db')
+        c = conn.cursor()
+        c.execute("UPDATE scores SET score = ? WHERE user_id = ?",
+                  (amount, user.id))
+        await message.channel.send(f"The CCP has set {user.mention} Social Credit Score to {amount}!")
+        conn.commit()
+        conn.close()
+        
+    elif message.content.startswith('?score'):
         user = message.author
         if len(message.mentions) > 0:
             user = message.mentions[0]
@@ -80,6 +152,53 @@ async def on_message(message):
         embed = discord.Embed(title='Social Credit Score Bot Help', description='Here are the available commands for the Social Credit Score Bot:', color=0xFF0000)
         embed.add_field(name='?score', value='Displays the social credit score of the user who sent the command. You can also mention another user to see their social credit score.', inline=False)
         embed.add_field(name='?help', value='Displays this help message.', inline=False)
+        embed.add_field(name='?board', value='Displays the leaderboard of the users with the highest social credit scores.', inline=False)
+        embed.add_field(name='?give', value='Gives a mentioned user a specified amount of social credit score. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?take', value='Takes a mentioned user a specified amount of social credit score. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?reset', value='Resets the social credit score of a mentioned user. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?set', value='Sets the social credit score of a mentioned user to a specified amount. You must have the required role to use this command.', inline=False)
+        embed.add_field(name='?ping', value='Displays the latency of the bot.', inline=False)
+        embed.add_field(name='Version', value=(version), inline=True)
         await message.channel.send(embed=embed)
+
+## PING COMMAND ##
+async def display_ping(message):
+            await message.channel.send(f'Pong! {round(client.latency * 1000)}ms')
+
+## LEADERBOARD CODE ##        
+    # Define leaderboard function
+async def display_leaderboard(message):
+
+  # Connect to database
+  conn = sqlite3.connect('scores.db')  
+  c = conn.cursor()
+
+  # Query all scores
+  c.execute("SELECT user_id, score FROM scores ORDER BY score DESC")
+
+  # Fetch results 
+  results = c.fetchall()
+
+  # Create embed message
+  embed = discord.Embed(title="Social Credit Leaderboard")
+
+  # Add fields for each result
+  for pos, result in enumerate(results):
+    user_id = result[0]
+    score = result[1]
+    user = client.get_user(user_id)
+    color = 0xFF0000 if pos <3 else 0x00FF00
+    emoji = "🥇" if pos==0 else "🥈" if pos==1 else "🥉" if pos==2 else ""
+    embed.add_field(name=f"#{pos+1} {emoji}", value=f"{user} : {score:>10}")
+    embed.color = color
+
+  # Send embed message
+  await message.channel.send(embed=embed)
+
+# Close connection
+  conn.close()
+  
+  ## END OF LEADERBOARD CODE ##
+
 
 client.run(token)
