@@ -1,3 +1,4 @@
 discord
 textblob 
 nltk
+vaderSentiment
