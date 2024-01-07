@@ -189,7 +189,7 @@ async def on_message(message):
         if result is None:
             await message.channel.send(f':flag_cn: {user.mention} has not received a social credit score yet. :flag_cn:')
         else:
-            await message.channel.send(f'{user.mention} has a social credit score of {result[0]}. :flag_cn:')
+            await message.channel.send(f'{user.mention} has a social credit score of {int(result[0])}. :flag_cn:')
 
     if message.content.startswith('?help'):
         embed = discord.Embed(title='Social Credit Score Bot Help', description='Here are the available commands for the Social Credit Score Bot:', color=0xFF0000)
@@ -229,7 +229,7 @@ async def display_leaderboard(message):
     user = client.get_user(user_id)
     color = 0xFF0000 #if pos <3 else 0x00FF00
     emoji = "🥇" if pos==0 else "🥈" if pos==1 else "🥉" if pos==2 else ""
-    embed.add_field(name=f"#{pos+1} {emoji}", value=f"{user} : {score:>10}")
+    embed.add_field(name=f"#{pos+1} {emoji}", value=f"{user} : {score:>10.0f}")
     embed.color = color
 
   # Send embed message
