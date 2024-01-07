@@ -1,11 +1,13 @@
 import sqlite3
 import discord
+import time
 from operator import itemgetter
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 #from textblob import TextBlob
 
 analyzer = SentimentIntensityAnalyzer()
 version = "0.3"
+banned_words = {}
 
 
 with open('roles.txt') as f:
@@ -13,6 +15,12 @@ with open('roles.txt') as f:
 
 with open('token.txt') as f:
     token = f.read()
+
+print("Before: ", banned_words)
+with open('banned.txt') as f:
+    banned_words = f.read().strip()
+print("After: ", banned_words)
+
 
 keywords = []
 with open('keywords.txt') as f:
@@ -27,13 +35,29 @@ async def on_ready():
     watching = discord.Activity(type=discord.ActivityType.watching, name="you! 🇨🇳")
     await client.change_presence(activity=watching)
     
+
+
+    min_words = 5
+    
+    def check_min_length(message):
+        if message.content.startswith('?'):
+            return True
+        
+        words = message.content.split()
+        if len(words) < min_words:
+            return False
+    
+    
 @client.event
 async def on_message(message):
     server_id = message.guild.id
     
+    
+    
     if message.author == client.user:
         return
-
+       
+        
     if message.content.startswith('?version'):
         await message.channel.send(f'Version: {version}')
         
@@ -44,7 +68,7 @@ async def on_message(message):
     if message.content.startswith('?board'):
         await display_leaderboard(message)
         
-    # min_words = 5
+
         
     # def check_min_length(message):
     #     if len(message.content.split()) < min_words:
@@ -58,52 +82,39 @@ async def on_message(message):
         # blob = TextBlob(message.content)
         # sentiment = blob.sentiment.polarity
         
+        if any(banned_word in message.content.lower() for banned_word in banned_words):
+  # send message and return 
+            await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected Social Credit Score Manipulation.')
+            return
+        
+        word_count = len(message.content.split())
+        length_multiplier = word_count / 50
         score = analyzer.polarity_scores(message.content)
         sentiment = int(score['compound'] * 100)
-        scaled_score = sentiment * 8
+        weighted_sent = sentiment * length_multiplier
+        scaled_score = weighted_sent * 2
         if -0.1 < sentiment < 0.1:
             scaled_score = 0
         
         if scaled_score > 7:
-            score = 75
+            score = 30
             await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
         
-        elif scaled_score > 4:
-            score = 25
+        elif scaled_score > 5:
+            score = 15
             await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
-        elif scaled_score > 0.5:
+        elif scaled_score > 0.2:
             score = 2
             await message.channel.send(f'CCP Message for User: {message.author.mention}! China Appreciation Detected. {score} Credit Points have been added to your Government Profile :red_envelope: :flag_cn:')
-        elif scaled_score < -6:
+        elif scaled_score < -7:
             score = -75
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
         elif scaled_score < -4:
             score = -25
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
-        
         elif scaled_score < 0:
             score = -5
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected improper behaviour! You have been deducted {score} points! ')
-
-
-
-
-
-
-############################Test stuff#################################
-        # conn = sqlite3.connect('scores.db')
-        # c = conn.cursor()
-        # c.execute('CREATE TABLE IF NOT EXISTS scores (user_id INTEGER PRIMARY KEY, score INTEGER)')
-        # c.execute('SELECT score FROM scores WHERE user_id = ?', (message.author.id,))
-        # result = c.fetchone()
-        # if result is None:
-        #     c.execute('INSERT INTO scores (user_id, score) VALUES (?, ?)', (message.author.id, score))
-        #     result = (score,)
-        # else:
-        #     c.execute('UPDATE scores SET score = ? WHERE user_id = ?', (result[0] + score, message.author.id))
-        # conn.commit()
-        # conn.close()
-     
         
         conn = sqlite3.connect('scores.db')
         c = conn.cursor()
@@ -114,15 +125,9 @@ async def on_message(message):
             c.execute('INSERT INTO scores (server_id, user_id, score) VALUES (?, ?, ?)', (server_id, message.author.id, score))
             result = (score,)
         else:
-            c.execute('UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?', (result[0] + sentiment, server_id, message.author.id))
+            c.execute('UPDATE scores SET score = ? WHERE server_id = ? AND user_id = ?', (result[0] + score, server_id, message.author.id))
         conn.commit()
         conn.close()
-######################################################################
-
-
-
-
-
 
     if message.content.startswith('?give'):
         
