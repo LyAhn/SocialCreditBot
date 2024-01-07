@@ -90,10 +90,13 @@ async def on_message(message):
         # blob = TextBlob(message.content)
         # sentiment = blob.sentiment.polarity
         
-        if any(banned_word in message.content.lower() for banned_word in banned_words):
-  # send message and return 
+        #if any(banned_word in message.content.lower() for banned_word in banned_words):
+        if any("\b+"+phrase+"\b" in message.content.lower() for phrase in banned_words):
             await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected Social Credit Score Manipulation.')
             return
+  # send message and return 
+            #await message.channel.send(f'CCP Message for User: {message.author.mention}! We have detected Social Credit Score Manipulation.')
+            #return
         
         word_count = len(message.content.split())
         length_multiplier = word_count / 50
