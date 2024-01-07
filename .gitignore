@@ -5,6 +5,7 @@ scores.db
 roles.txt
 banned.txt
 *.old
+*.log
 
 
 
