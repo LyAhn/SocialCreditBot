@@ -60,11 +60,11 @@ async def on_ready():
 async def on_message(message):
     server_id = message.guild.id
     
-    
-    
     if message.author == client.user:
         return
-       
+    
+    if "fuck you bot" in message.content.lower():
+        await message.channel.send("不，操你媽 "+ message.author.mention)
         
     if message.content.startswith('?version'):
         await message.channel.send(f'Version: {version}')
